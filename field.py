@@ -20,13 +20,21 @@ class Field(ABC):
         # the domain of the Field is [-L, L]^D in D dim.
         self.L = L
 
+    @abstractmethod
+    def __add__(self, other):
+        L = min(self.L, other.L)
+        return type(self)(lambda x: self.f(x) + other.f(x), L)
 
     @classmethod
     def nill(cls):
         return cls(lambda x: 0)
 
+
 # the difference between vector/Scalar fields is the output produced
 class FieldScalar(Field):
+    pass
+
+class FieldVector(Field):
     pass
 
 # The dimensionality of the fields is given by its input
@@ -100,13 +108,44 @@ class Function(FieldScalar, Field1D):
 
     def __add__(self, other):
         if isinstance(other, Function):
-            L = min(self.L, other.L)
-            return Function(lambda x: self.f(x) + other.f(x), L)
+            return super().__add__(other)
 
         elif isinstance(other, Scalar):
             return Function(lambda x: self.f(x) + other.f(), self.L)
 
+        else:
+            raise NotImplementedError
 
     # Public methods
     def plot(self, ax, n = 100):
         return super().plot(ax, n)
+
+# The the i'th component of the vector field, evaluated at (x_1, x_2), is given by f[i, x_1, x_2]
+class FieldVector2D(FieldVector, Field2D):
+
+    __shape__ = (2, 1, 1)
+
+    # Private methods
+    def __init__(self, f, L = 1):
+        x = np.mgrid[-1:1:1j, -1:1:1j]
+        x[0] *= np.nan
+        x[1] *= np.nan
+        if not f(x).shape == self.__shape__:
+            raise InstantionExeption(self, f)
+
+        super().__init__(f, L)
+    
+    def __add__(self, other):
+        if isinstance(other, type(self)):
+            return super().__add__(other)
+
+        else:
+            raise NotImplementedError
+
+
+    # Public methods
+    def plot(self, ax, n = 10):
+        L = self.L
+        x = np.array(np.mgrid[-L:L:n*1j, -L:L:n*1j])
+        fx = self.f(x)
+        return ax.quiver(*x, *fx, pivot = "middle")
